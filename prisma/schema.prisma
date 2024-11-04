@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+  role      Role?    @relation(fields: [roleId], references: [id]) // Thêm quan hệ 1-1 giữa User và Role
+  roleId    Int?
+}
+
+model Role {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
+  description  String?
+  users        User[] // 1 Role có thể có nhiều User
+  resources    Resource[]     @relation("RoleResources") // Thiết lập quan hệ nhiều-nhiều với Resource qua bảng nối
+  RoleResource RoleResource[]
+}
+
+model Resource {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
+  description  String?
+  roles        Role[]         @relation("RoleResources") // Thiết lập quan hệ nhiều-nhiều với Role qua bảng nối
+  RoleResource RoleResource[]
+}
+
+// Bảng nối cho quan hệ nhiều-nhiều giữa Role và Resource
+model RoleResource {
+  roleId     Int
+  resourceId Int
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, resourceId]) // Composite key đảm bảo tính duy nhất
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  foods       Food[]
+}
+
+model Food {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  category    Category    @relation(fields: [categoryId], references: [id])
+  categoryId  Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  inventory   Inventory?
+  orderItems  OrderItem[]
+}
+
+model Inventory {
+  id            Int      @id @default(autoincrement())
+  food          Food     @relation(fields: [foodId], references: [id])
+  foodId        Int      @unique
+  stockQuantity Int
+  updatedAt     DateTime @updatedAt
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  user        User        @relation(fields: [userId], references: [id])
+  userId      Int
+  totalAmount Float
+  status      String
+  orderDate   DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
+  payment     Payment?
+}
+
+model OrderItem {
+  id       Int   @id @default(autoincrement())
+  order    Order @relation(fields: [orderId], references: [id])
+  orderId  Int
+  food     Food  @relation(fields: [foodId], references: [id])
+  foodId   Int
+  quantity Int
+  price    Float
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  order         Order    @relation(fields: [orderId], references: [id])
+  orderId       Int      @unique
+  amount        Float
+  paymentDate   DateTime @default(now())
+  paymentStatus String
+  paymentMethod String
+}
